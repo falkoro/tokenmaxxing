@@ -8,6 +8,8 @@ import { Separator } from "@/components/ui/separator"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { SkeletonLines } from "@/components/skeleton-lines"
 import { UsageSparkline } from "@/components/usage-sparkline"
+import { UsageLimitGlow } from "@/components/usage-limit-glow"
+import { maxProgressPercent, primaryProgressAccent } from "@/lib/max-progress-percent"
 import { PluginError } from "@/components/plugin-error"
 import { useNowTicker } from "@/hooks/use-now-ticker"
 import { REFRESH_COOLDOWN_MS, type DisplayMode, type ResetTimerDisplayMode, type TimeFormatMode } from "@/lib/settings"
@@ -151,6 +153,10 @@ export function ProviderCard({
     ? now - lastManualRefreshAt < REFRESH_COOLDOWN_MS
     : false
 
+  const peakUsagePercent = useMemo(() => maxProgressPercent(filteredLines), [filteredLines])
+  const limitGlowActive = peakUsagePercent >= 85
+  const limitGlowColor = useMemo(() => primaryProgressAccent(filteredLines), [filteredLines])
+
   const visibleLinks = useMemo(
     () =>
       links
@@ -183,6 +189,7 @@ export function ProviderCard({
 
   return (
     <div>
+      <UsageLimitGlow active={limitGlowActive} accentColor={limitGlowColor}>
       <div className="py-3">
         <div className="flex items-center justify-between mb-2">
           <div className="relative flex items-center">
@@ -342,6 +349,7 @@ export function ProviderCard({
         )}
 
       </div>
+      </UsageLimitGlow>
       {showSeparator && <Separator />}
     </div>
   )

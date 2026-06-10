@@ -46,9 +46,17 @@ const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
         {...props}
       >
         <div
-          className="h-full transition-all bg-primary"
+          className="relative h-full overflow-hidden rounded-full bg-primary transition-[width] duration-500 ease-out"
           style={{ width: `${clamped}%`, ...indicatorStyle }}
-        />
+        >
+          {clamped > 0 && (
+            <div
+              data-slot="progress-shimmer"
+              aria-hidden="true"
+              className="progress-fill-shimmer absolute inset-0"
+            />
+          )}
+        </div>
         {showMarker && (
           <div
             data-slot="progress-marker"

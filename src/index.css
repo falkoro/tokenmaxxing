@@ -180,28 +180,7 @@ body,
   border-bottom: 6px solid var(--card);
 }
 
-/* Border beam for the update button */
-.update-border-beam {
-  position: relative;
-  isolation: isolate;
-}
-.update-border-beam::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1.5px;
-  background: conic-gradient(
-    from var(--beam-angle),
-    transparent 70%,
-    var(--destructive) 90%,
-    transparent 100%
-  );
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  animation: beam-rotate 2.5s linear infinite;
-}
+/* Rotating border beams */
 @property --beam-angle {
   syntax: "<angle>";
   initial-value: 0deg;
@@ -211,6 +190,82 @@ body,
   to {
     --beam-angle: 360deg;
   }
+}
+
+.update-border-beam,
+.nav-border-beam {
+  position: relative;
+  isolation: isolate;
+}
+.update-border-beam::before,
+.nav-border-beam::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: beam-rotate 2.5s linear infinite;
+  pointer-events: none;
+}
+.update-border-beam::before {
+  background: conic-gradient(
+    from var(--beam-angle),
+    transparent 70%,
+    var(--destructive) 90%,
+    transparent 100%
+  );
+}
+.nav-border-beam::before {
+  inset: -1px;
+  background: conic-gradient(
+    from var(--beam-angle),
+    transparent 62%,
+    #7c3aed 76%,
+    #06b6d4 88%,
+    var(--page-accent, #bfff00) 94%,
+    transparent 100%
+  );
+  animation-duration: 3s;
+}
+
+/* Cursor-following glow on provider cards near their limit */
+.usage-limit-glow {
+  position: relative;
+  border-radius: 0.75rem;
+}
+.usage-limit-glow::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: radial-gradient(
+    420px circle at var(--glow-x, 50%) var(--glow-y, 50%),
+    color-mix(in srgb, var(--glow-color, var(--destructive)) 38%, transparent),
+    transparent 42%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+.usage-limit-glow > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Shimmer across filled progress bars */
+.progress-fill-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.38),
+    transparent
+  );
+  animation: shimmer 2.2s ease-in-out infinite;
 }
 
 /* Shimmer animation for progress bars refreshing with stale data */
@@ -226,8 +281,14 @@ body,
   animation: shimmer 1.5s ease-in-out infinite;
 }
 @media (prefers-reduced-motion: reduce) {
-  .animate-shimmer {
+  .animate-shimmer,
+  .progress-fill-shimmer::after,
+  .update-border-beam::before,
+  .nav-border-beam::before {
     animation: none;
+  }
+  .usage-limit-glow::before {
+    display: none;
   }
 }
 

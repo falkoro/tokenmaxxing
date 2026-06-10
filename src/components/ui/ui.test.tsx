@@ -48,10 +48,12 @@ describe("ui components", () => {
   })
 
   it("renders progress with clamp + custom color", () => {
-    const { rerender } = render(<Progress value={150} indicatorColor="#fff" />)
+    const { rerender, container } = render(<Progress value={150} indicatorColor="#fff" />)
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "100")
+    expect(container.querySelector('[data-slot="progress-shimmer"]')).toBeTruthy()
     rerender(<Progress value={-5} />)
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "0")
+    expect(container.querySelector('[data-slot="progress-shimmer"]')).toBeNull()
   })
 
   it("renders and clamps pace marker on progress bars", () => {
