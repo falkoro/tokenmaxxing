@@ -90,7 +90,8 @@ pub use macos::{
 mod other;
 #[cfg(not(target_os = "macos"))]
 pub use other::{
-    hide_panel, init, is_visible, position_panel_at_tray_icon, show_panel, toggle_panel,
+    apply_pinned, hide_panel, init, is_visible, position_panel_at_tray_icon, show_panel,
+    toggle_panel,
 };
 
 fn monitor_contains_physical_point(
