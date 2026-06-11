@@ -41,9 +41,10 @@ pub fn stay_open_when_pinned() -> bool {
     PANEL_STAY_OPEN_WHEN_PINNED.load(Ordering::Relaxed)
 }
 
-/// When enabled, dismissing the panel minimizes it instead of hiding it, so
-/// the app keeps a taskbar button while running (Windows/Linux only).
-/// macOS ignores this flag — the NSPanel backend never reads it.
+/// When enabled (the default on Windows/Linux), the panel behaves like a normal
+/// taskbar window: it keeps a taskbar button, stays open when you click away
+/// (dropping behind the window you clicked instead of hiding), and is not
+/// always-on-top. macOS ignores this flag — the NSPanel backend never reads it.
 pub fn set_keep_on_taskbar(keep: bool) {
     PANEL_KEEP_ON_TASKBAR.store(keep, Ordering::Relaxed);
 }
@@ -52,9 +53,25 @@ pub fn keep_on_taskbar() -> bool {
     PANEL_KEEP_ON_TASKBAR.load(Ordering::Relaxed)
 }
 
-/// Hide on blur unless pinned and configured to stay open.
+/// Whether losing focus should dismiss the panel.
+///
+/// In keep-on-taskbar mode (the default) the panel is a normal window and stays
+/// open on blur — you dismiss it explicitly via the tray. Otherwise it acts as
+/// a classic tray dropdown and hides on blur, unless pinned and set to stay open.
 pub fn should_hide_on_blur() -> bool {
+    if keep_on_taskbar() {
+        return false;
+    }
     !is_pinned() || !stay_open_when_pinned()
+}
+
+/// Whether the panel window should float above everything.
+///
+/// The pinned widget and the classic dropdown stay on top. The default
+/// keep-on-taskbar window mode does NOT — clicking another window drops the
+/// panel behind it, like a normal app window.
+pub fn wants_always_on_top() -> bool {
+    is_pinned() || !keep_on_taskbar()
 }
 
 static PANEL_SHOWN_AT: Mutex<Option<Instant>> = Mutex::new(None);
@@ -240,4 +257,33 @@ pub(crate) fn compute_placement(
         y: panel_y,
         primary_logical_h,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn window_mode_stays_open_and_behind_on_blur() {
+        // Regression: with keep-on-taskbar (the default) the panel is a normal
+        // window — clicking another window must NOT hide or minimize it, and it
+        // must NOT be always-on-top, so the clicked window comes to the front.
+        set_pinned(false);
+        set_stay_open_when_pinned(false);
+
+        set_keep_on_taskbar(true);
+        assert!(!should_hide_on_blur(), "window mode: stay open on blur");
+        assert!(!wants_always_on_top(), "window mode: not always-on-top");
+
+        // Classic tray dropdown when keep-on-taskbar is off.
+        set_keep_on_taskbar(false);
+        assert!(should_hide_on_blur(), "dropdown: hide on blur");
+        assert!(wants_always_on_top(), "dropdown: always-on-top");
+
+        // A pinned widget stays on top regardless of keep-on-taskbar.
+        set_pinned(true);
+        set_keep_on_taskbar(true);
+        assert!(wants_always_on_top(), "pinned: always-on-top");
+        set_pinned(false);
+    }
 }

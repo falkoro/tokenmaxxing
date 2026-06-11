@@ -23,7 +23,9 @@ const PINNED_FALLBACK_TOP_MARGIN: f64 = 10.0;
 /// Configure the main window to behave like a tray dropdown. Idempotent.
 pub fn init(app_handle: &AppHandle) -> tauri::Result<()> {
     if let Some(window) = app_handle.get_webview_window("main") {
-        let _ = window.set_always_on_top(true);
+        // Not always-on-top in the default keep-on-taskbar window mode, so
+        // clicking another window brings it to the front over the panel.
+        let _ = window.set_always_on_top(super::wants_always_on_top());
         let _ = window.set_skip_taskbar(super::is_pinned());
     }
     Ok(())
@@ -41,15 +43,13 @@ pub fn is_visible(app_handle: &AppHandle) -> bool {
 }
 
 pub fn hide_panel(app_handle: &AppHandle) {
+    // Always hide on explicit dismiss (tray / shortcut), never minimize: a
+    // minimized borderless window was hard to recover (is_minimized() is
+    // unreliable in tao) and littered the taskbar. Click-away no longer routes
+    // here in keep-on-taskbar mode — see should_hide_on_blur; the panel stays
+    // open and simply drops behind whatever you click.
     if let Some(window) = app_handle.get_webview_window("main") {
-        if super::keep_on_taskbar() {
-            // Minimize instead of hiding so the taskbar button stays alive
-            // (a hidden window loses its taskbar presence, which also made
-            // right-clicking the taskbar button act on a vanished window).
-            let _ = window.minimize();
-        } else {
-            let _ = window.hide();
-        }
+        let _ = window.hide();
     }
 }
 
@@ -89,7 +89,9 @@ pub fn apply_pinned(app_handle: &AppHandle, pinned: bool) {
         return;
     };
 
-    let _ = window.set_always_on_top(true);
+    // Pinned floats on top; unpinning falls back to the mode default (normal
+    // window in keep-on-taskbar mode).
+    let _ = window.set_always_on_top(super::wants_always_on_top());
     let _ = window.set_skip_taskbar(pinned);
     if pinned {
         let _ = window.unminimize();

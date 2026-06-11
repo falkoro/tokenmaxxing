@@ -77,15 +77,13 @@ pub(crate) fn set_panel_stay_open_when_pinned(_app_handle: tauri::AppHandle, sta
 #[tauri::command]
 pub(crate) fn set_panel_keep_on_taskbar(app_handle: tauri::AppHandle, keep: bool) {
     panel::set_keep_on_taskbar(keep);
-    // Turning the flag off while the panel sits minimized on the taskbar
-    // would leave a stale button behind — hide it fully instead.
+    // Apply the always-on-top change live: keep-on-taskbar mode is a normal
+    // window (not on top), turning it off makes it a classic on-top dropdown.
     #[cfg(not(target_os = "macos"))]
-    if !keep {
+    {
         use tauri::Manager;
         if let Some(window) = app_handle.get_webview_window("main") {
-            if window.is_minimized().unwrap_or(false) {
-                let _ = window.hide();
-            }
+            let _ = window.set_always_on_top(panel::wants_always_on_top());
         }
     }
     #[cfg(target_os = "macos")]
