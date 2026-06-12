@@ -4,7 +4,9 @@ import { TrayIcon } from "@tauri-apps/api/tray"
 import type { PluginMeta } from "@/lib/plugin-types"
 import type { DisplayMode, MenubarIconStyle, MenubarMetric, PluginSettings } from "@/lib/settings"
 import { getEnabledPluginIds } from "@/lib/settings"
+import { isMacPlatform } from "@/lib/platform"
 import { getTrayIconSizePx, renderTrayBarsIcon } from "@/lib/tray-bars-icon"
+import { isTrayIconTemplate } from "@/lib/tray-icon"
 import { getTrayPrimaryBars, type TrayPrimaryBar } from "@/lib/tray-primary-progress"
 import { formatTrayPercentText, formatTrayTooltip } from "@/lib/tray-tooltip"
 import type { PluginState } from "@/hooks/app/types"
@@ -159,10 +161,11 @@ export function useTrayIcon({
 
       const restoreGaugeIcon = () => {
         const gaugePath = trayGaugeIconPathRef.current
+        const useTemplate = isTrayIconTemplate()
         if (gaugePath) {
           Promise.all([
             tray.setIcon(gaugePath),
-            tray.setIconAsTemplate(true),
+            tray.setIconAsTemplate(useTemplate),
             setTrayTitle(""),
             setTrayTooltip("Tokenmaxxing"),
           ])
@@ -194,6 +197,9 @@ export function useTrayIcon({
       const style = menubarIconStyleRef.current
       const preferWeekly = menubarMetricRef.current === "weekly"
       const sizePx = getTrayIconSizePx(window.devicePixelRatio)
+      // macOS template icons must be black; Windows/Linux taskbars ignore the
+      // template flag and are usually dark, so draw white there.
+      const glyphColor = isMacPlatform() ? "black" : "white"
       const nextActiveView = activeViewRef.current
       const activeProviderId =
         nextActiveView !== "home" && nextActiveView !== "settings" ? nextActiveView : null
@@ -256,16 +262,23 @@ export function useTrayIcon({
       })
       const tooltip = formatTrayTooltip(tooltipBars, pluginsMetaRef.current, preferWeekly)
       const updateTooltip = () => setTrayTooltip(tooltip)
+      const useTemplate = isTrayIconTemplate()
+
+      if (style === "gauge") {
+        restoreGaugeIcon()
+        return
+      }
 
       if (style === "bars") {
         renderTrayBarsIcon({
           bars: barsForPreview,
           sizePx,
           style: "bars",
+          glyphColor,
         })
           .then(async (img) => {
             await tray.setIcon(img)
-            await tray.setIconAsTemplate(true)
+            await tray.setIconAsTemplate(useTemplate)
             await setTrayTitle("")
             await updateTooltip()
           })
@@ -290,10 +303,11 @@ export function useTrayIcon({
           sizePx,
           style: "donut",
           providerIconUrl,
+          glyphColor,
         })
           .then(async (img) => {
             await tray.setIcon(img)
-            await tray.setIconAsTemplate(true)
+            await tray.setIconAsTemplate(useTemplate)
             await setTrayTitle("")
             await updateTooltip()
           })
@@ -312,10 +326,11 @@ export function useTrayIcon({
         style: "provider",
         percentText: supportsNativeTrayTitle ? undefined : providerPercentText,
         providerIconUrl,
+        glyphColor,
       })
         .then(async (img) => {
           await tray.setIcon(img)
-          await tray.setIconAsTemplate(true)
+          await tray.setIconAsTemplate(useTemplate)
           await setTrayTitle(providerPercentText)
           await updateTooltip()
         })
@@ -341,7 +356,9 @@ export function useTrayIcon({
         trayInitializedRef.current = true
 
         try {
-          trayGaugeIconPathRef.current = await resolveResource("icons/tray-icon.png")
+          trayGaugeIconPathRef.current = await resolveResource(
+            isMacPlatform() ? "icons/tray-icon.png" : "icons/tray-icon-color.png"
+          )
         } catch (e) {
           console.error("Failed to resolve tray gauge icon resource:", e)
         }

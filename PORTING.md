@@ -9,11 +9,12 @@ blockers are the macOS-native pieces.
 | Platform | Compiles | Runs | Notes |
 |----------|:--------:|:----:|-------|
 | macOS    | ✅ | ✅ | Native `NSPanel` backend, unchanged behavior |
-| Linux    | 🟡 | 🟡 | Panel abstraction landed; building/smoke-testing |
-| Windows  | 🟡 | ⏳ | Same code path as Linux; needs a Windows build |
+| Linux    | ✅ | ✅ | deb/rpm/AppImage build; app + tray + plugin probes + local HTTP API verified live (under Xvfb on a headless server) |
+| Windows  | ✅ | ⏳ | NSIS installer builds clean in CI (`build-desktop.yml`); awaiting first run-test on real Windows |
 
-The cross-platform compile status is checked per-OS in `.github/workflows/ci.yml`
-(the `rust-build` matrix; Windows/Linux are `continue-on-error` until they pass).
+Compile status is checked per-OS in `.github/workflows/ci.yml`; installable
+packages are produced by `.github/workflows/build-desktop.yml` on every push
+to `master` (Windows NSIS + Linux deb/rpm/AppImage, as run artifacts).
 
 ## What the port did
 
@@ -26,6 +27,10 @@ The macOS-only pieces were put behind a platform abstraction in `src/panel/`:
   now `#[cfg(target_os = "macos")]`.
 - `src/panel/other.rs` — Windows/Linux backend: the main `WebviewWindow` as a
   borderless, always-on-top, skip-taskbar dropdown.
+- Windows/Linux **pin-as-widget** mode: when pinned, the panel stays open on focus
+  loss, keeps its dragged position (no tray reposition on show), and can be moved
+  via a top drag region (`data-tauri-drag-region`). macOS NSPanel behavior is
+  unchanged.
 
 `Cargo.toml` moved `tauri-nspanel` under `[target.'cfg(target_os = "macos")']`.
 `lib.rs` registers the `tauri_nspanel` plugin only on macOS and hides the window on

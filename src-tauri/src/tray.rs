@@ -1,14 +1,13 @@
 use tauri::image::Image;
 use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::path::BaseDirectory;
-use tauri::tray::{MouseButtonState, TrayIconBuilder, TrayIconEvent};
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_clipboard_manager::ClipboardExt;
 use tauri_plugin_store::StoreExt;
 
 use crate::log_path;
 use crate::panel::{hide_panel, is_visible, position_panel_at_tray_icon, show_panel};
-
 const LOG_LEVEL_STORE_KEY: &str = "logLevel";
 
 fn get_stored_log_level(app_handle: &AppHandle) -> log::LevelFilter {
@@ -46,9 +45,17 @@ fn set_stored_log_level(app_handle: &AppHandle, level: log::LevelFilter) {
 }
 
 pub fn create(app_handle: &AppHandle) -> tauri::Result<()> {
+    // macOS uses a monochrome template glyph (recolored by the menu bar);
+    // Windows/Linux ignore the template flag, so a black glyph would be
+    // invisible on dark taskbars — use the colored icon there instead.
+    let tray_icon_file = if cfg!(target_os = "macos") {
+        "icons/tray-icon.png"
+    } else {
+        "icons/tray-icon-color.png"
+    };
     let tray_icon_path = app_handle
         .path()
-        .resolve("icons/tray-icon.png", BaseDirectory::Resource)?;
+        .resolve(tray_icon_file, BaseDirectory::Resource)?;
     let icon = Image::from_path(tray_icon_path)?;
 
     // Load persisted log level
@@ -155,7 +162,7 @@ pub fn create(app_handle: &AppHandle) -> tauri::Result<()> {
 
     TrayIconBuilder::with_id("tray")
         .icon(icon)
-        .icon_as_template(true)
+        .icon_as_template(cfg!(target_os = "macos"))
         .tooltip("Tokenmaxxing")
         .menu(&menu)
         .show_menu_on_left_click(false)
@@ -214,8 +221,13 @@ pub fn create(app_handle: &AppHandle) -> tauri::Result<()> {
         .on_tray_icon_event(|tray, event| {
             let app_handle = tray.app_handle();
 
+            // Left button only: right-click must fall through to the native
+            // context menu (Windows/Linux show it on right-click).
             if let TrayIconEvent::Click {
-                button_state, rect, ..
+                button: MouseButton::Left,
+                button_state,
+                rect,
+                ..
             } = event
             {
                 if button_state == MouseButtonState::Up {

@@ -11,6 +11,7 @@ import type {
   AutoUpdateIntervalMinutes,
   DisplayMode,
   GlobalShortcut,
+  MachineSettings,
   MenubarIconStyle,
   MenubarMetric,
   ResetTimerDisplayMode,
@@ -38,7 +39,10 @@ export type AppContentActionProps = {
   onMenubarMetricChange: (value: MenubarMetric) => void
   traySettingsPreview: TraySettingsPreview
   onGlobalShortcutChange: (value: GlobalShortcut) => void
+  onMachineSettingsChange: (value: MachineSettings) => void
   onStartOnLoginChange: (value: boolean) => void
+  onPanelStayOpenWhenPinnedChange: (value: boolean) => void
+  onPanelKeepOnTaskbarChange: (value: boolean) => void
 }
 
 export type AppContentProps = AppContentDerivedProps & AppContentActionProps
@@ -60,7 +64,10 @@ export function AppContent({
   onMenubarMetricChange,
   traySettingsPreview,
   onGlobalShortcutChange,
+  onMachineSettingsChange,
   onStartOnLoginChange,
+  onPanelStayOpenWhenPinnedChange,
+  onPanelKeepOnTaskbarChange,
 }: AppContentProps) {
   const { activeView } = useAppUiStore(
     useShallow((state) => ({
@@ -76,8 +83,11 @@ export function AppContent({
     menubarMetric,
     autoUpdateInterval,
     globalShortcut,
+    machineSettings,
     themeMode,
     startOnLogin,
+    panelStayOpenWhenPinned,
+    panelKeepOnTaskbar,
   } = useAppPreferencesStore(
     useShallow((state) => ({
       displayMode: state.displayMode,
@@ -87,8 +97,11 @@ export function AppContent({
       menubarMetric: state.menubarMetric,
       autoUpdateInterval: state.autoUpdateInterval,
       globalShortcut: state.globalShortcut,
+      machineSettings: state.machineSettings,
       themeMode: state.themeMode,
       startOnLogin: state.startOnLogin,
+      panelStayOpenWhenPinned: state.panelStayOpenWhenPinned,
+      panelKeepOnTaskbar: state.panelKeepOnTaskbar,
     }))
   )
 
@@ -128,8 +141,14 @@ export function AppContent({
         traySettingsPreview={traySettingsPreview}
         globalShortcut={globalShortcut}
         onGlobalShortcutChange={onGlobalShortcutChange}
+        machineSettings={machineSettings}
+        onMachineSettingsChange={onMachineSettingsChange}
         startOnLogin={startOnLogin}
         onStartOnLoginChange={onStartOnLoginChange}
+        panelStayOpenWhenPinned={panelStayOpenWhenPinned}
+        onPanelStayOpenWhenPinnedChange={onPanelStayOpenWhenPinnedChange}
+        panelKeepOnTaskbar={panelKeepOnTaskbar}
+        onPanelKeepOnTaskbarChange={onPanelKeepOnTaskbarChange}
       />
     )
   }

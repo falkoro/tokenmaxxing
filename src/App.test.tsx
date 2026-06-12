@@ -23,6 +23,8 @@ const state = vi.hoisted(() => ({
   saveMenubarIconStyleMock: vi.fn(),
   loadMenubarMetricMock: vi.fn(),
   saveMenubarMetricMock: vi.fn(),
+  loadMachineSettingsMock: vi.fn(),
+  saveMachineSettingsMock: vi.fn(),
   migrateLegacyTraySettingsMock: vi.fn(),
   loadGlobalShortcutMock: vi.fn(),
   saveGlobalShortcutMock: vi.fn(),
@@ -233,6 +235,8 @@ vi.mock("@/lib/settings", async () => {
     saveMenubarIconStyle: state.saveMenubarIconStyleMock,
     loadMenubarMetric: state.loadMenubarMetricMock,
     saveMenubarMetric: state.saveMenubarMetricMock,
+    loadMachineSettings: state.loadMachineSettingsMock,
+    saveMachineSettings: state.saveMachineSettingsMock,
     migrateLegacyTraySettings: state.migrateLegacyTraySettingsMock,
     loadGlobalShortcut: state.loadGlobalShortcutMock,
     saveGlobalShortcut: state.saveGlobalShortcutMock,
@@ -273,6 +277,8 @@ describe("App", () => {
     state.saveMenubarIconStyleMock.mockReset()
     state.loadMenubarMetricMock.mockReset()
     state.saveMenubarMetricMock.mockReset()
+    state.loadMachineSettingsMock.mockReset()
+    state.saveMachineSettingsMock.mockReset()
     state.migrateLegacyTraySettingsMock.mockReset()
     state.loadGlobalShortcutMock.mockReset()
     state.saveGlobalShortcutMock.mockReset()
@@ -313,6 +319,13 @@ describe("App", () => {
     state.saveMenubarIconStyleMock.mockResolvedValue(undefined)
     state.loadMenubarMetricMock.mockResolvedValue("default")
     state.saveMenubarMetricMock.mockResolvedValue(undefined)
+    state.loadMachineSettingsMock.mockResolvedValue({
+      mode: "local",
+      remoteBaseUrl: "",
+      remotePluginIds: [],
+      setupComplete: true,
+    })
+    state.saveMachineSettingsMock.mockResolvedValue(undefined)
     state.migrateLegacyTraySettingsMock.mockResolvedValue(undefined)
     state.loadGlobalShortcutMock.mockResolvedValue(null)
     state.saveGlobalShortcutMock.mockResolvedValue(undefined)
@@ -1594,7 +1607,7 @@ describe("App", () => {
     await waitFor(() => expect(screen.getAllByRole("button", { name: "Retry" })).toHaveLength(2))
 
     const initialCalls = state.startBatchMock.mock.calls.length
-    const refreshButton = await screen.findByRole("button", { name: /Next update in/i })
+    const refreshButton = await screen.findByRole("button", { name: /Next refresh in/i })
     await userEvent.click(refreshButton)
 
     await waitFor(() =>
@@ -1625,7 +1638,7 @@ describe("App", () => {
     const initialCalls = state.startBatchMock.mock.calls.length
     state.startBatchMock.mockImplementation(() => new Promise(() => {}))
 
-    const refreshButton = await screen.findByRole("button", { name: /Next update in/i })
+    const refreshButton = await screen.findByRole("button", { name: /Next refresh in/i })
     await userEvent.click(refreshButton)
     await userEvent.click(refreshButton)
     await userEvent.click(refreshButton)
@@ -1652,7 +1665,7 @@ describe("App", () => {
       await screen.findByRole("button", { name: "Retry" })
 
       state.startBatchMock.mockRejectedValueOnce(new Error("refresh all failed"))
-      const refreshButton = await screen.findByRole("button", { name: /Next update in/i })
+      const refreshButton = await screen.findByRole("button", { name: /Next refresh in/i })
       await userEvent.click(refreshButton)
 
       await waitFor(() =>
@@ -1921,7 +1934,7 @@ describe("App", () => {
     resolveResourcePath?.("/resource/icons/tray-icon.png")
 
     await waitFor(() => expect(state.traySetIconMock).toHaveBeenCalledWith({}))
-    expect(state.traySetIconAsTemplateMock).toHaveBeenCalledWith(true)
+    expect(state.traySetIconAsTemplateMock).toHaveBeenCalledWith(false)
     expect(state.traySetTitleMock).toHaveBeenCalledWith("--%")
   })
 

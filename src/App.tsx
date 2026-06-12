@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef } from "react"
+import { LazyStore } from "@tauri-apps/plugin-store"
 import { useShallow } from "zustand/react/shallow"
 import { AppShell } from "@/components/app/app-shell"
 import { useAppPluginViews } from "@/hooks/app/use-app-plugin-views"
+import { usePluginContextActions } from "@/hooks/app/use-plugin-context-actions"
 import { useProbe } from "@/hooks/app/use-probe"
 import { useSettingsBootstrap } from "@/hooks/app/use-settings-bootstrap"
 import { useSettingsDisplayActions } from "@/hooks/app/use-settings-display-actions"
@@ -10,32 +12,25 @@ import { useSettingsPluginList } from "@/hooks/app/use-settings-plugin-list"
 import { useSettingsSystemActions } from "@/hooks/app/use-settings-system-actions"
 import { useSettingsTheme } from "@/hooks/app/use-settings-theme"
 import { useTrayIcon } from "@/hooks/app/use-tray-icon"
-import { REFRESH_COOLDOWN_MS, savePluginSettings } from "@/lib/settings"
-import { type PluginContextAction } from "@/components/side-nav"
 import { useAppPluginStore } from "@/stores/app-plugin-store"
 import { useAppPreferencesStore } from "@/stores/app-preferences-store"
 import { useAppUiStore } from "@/stores/app-ui-store"
+import { isMacPlatform } from "@/lib/platform"
 
 const TRAY_PROBE_DEBOUNCE_MS = 500
-const TRAY_SETTINGS_DEBOUNCE_MS = 2000
+const UI_STATE_STORE_PATH = "ui-state.json"
+const PANEL_PINNED_KEY = "panelPinned"
 
 function App() {
-  const {
-    activeView,
-    setActiveView,
-  } = useAppUiStore(
+  const { activeView, setActiveView, setPanelPinned } = useAppUiStore(
     useShallow((state) => ({
       activeView: state.activeView,
       setActiveView: state.setActiveView,
+      setPanelPinned: state.setPanelPinned,
     }))
   )
 
-  const {
-    pluginsMeta,
-    setPluginsMeta,
-    pluginSettings,
-    setPluginSettings,
-  } = useAppPluginStore(
+  const { pluginsMeta, setPluginsMeta, pluginSettings, setPluginSettings } = useAppPluginStore(
     useShallow((state) => ({
       pluginsMeta: state.pluginsMeta,
       setPluginsMeta: state.setPluginsMeta,
@@ -55,11 +50,14 @@ function App() {
     setMenubarIconStyle,
     menubarMetric,
     setMenubarMetric,
+    setMachineSettings,
     resetTimerDisplayMode,
     setResetTimerDisplayMode,
     setTimeFormatMode,
     setGlobalShortcut,
     setStartOnLogin,
+    setPanelStayOpenWhenPinned,
+    setPanelKeepOnTaskbar,
   } = useAppPreferencesStore(
     useShallow((state) => ({
       autoUpdateInterval: state.autoUpdateInterval,
@@ -72,11 +70,14 @@ function App() {
       setMenubarIconStyle: state.setMenubarIconStyle,
       menubarMetric: state.menubarMetric,
       setMenubarMetric: state.setMenubarMetric,
+      setMachineSettings: state.setMachineSettings,
       resetTimerDisplayMode: state.resetTimerDisplayMode,
       setResetTimerDisplayMode: state.setResetTimerDisplayMode,
       setTimeFormatMode: state.setTimeFormatMode,
       setGlobalShortcut: state.setGlobalShortcut,
       setStartOnLogin: state.setStartOnLogin,
+      setPanelStayOpenWhenPinned: state.setPanelStayOpenWhenPinned,
+      setPanelKeepOnTaskbar: state.setPanelKeepOnTaskbar,
     }))
   )
 
@@ -116,6 +117,24 @@ function App() {
     }
   }, [scheduleTrayIconUpdate])
 
+  useEffect(() => {
+    if (isMacPlatform()) return
+
+    const store = new LazyStore(UI_STATE_STORE_PATH)
+    void store
+      .get<boolean>(PANEL_PINNED_KEY)
+      .then((value) => {
+        if (value) {
+          setPanelPinned(true)
+        }
+      })
+      .catch(console.error)
+  }, [setPanelPinned])
+
+  const handleFirstRunSetupNeeded = useCallback(() => {
+    setActiveView("settings")
+  }, [setActiveView])
+
   const { applyStartOnLogin } = useSettingsBootstrap({
     setPluginSettings,
     setPluginsMeta,
@@ -124,10 +143,14 @@ function App() {
     setDisplayMode,
     setMenubarIconStyle,
     setMenubarMetric,
+    setMachineSettings,
     setResetTimerDisplayMode,
     setTimeFormatMode,
     setGlobalShortcut,
     setStartOnLogin,
+    setPanelStayOpenWhenPinned,
+    setPanelKeepOnTaskbar,
+    onFirstRunSetupNeeded: handleFirstRunSetupNeeded,
     setLoadingForPlugins,
     setErrorForPlugins,
     startBatch,
@@ -157,20 +180,23 @@ function App() {
   const {
     handleAutoUpdateIntervalChange,
     handleGlobalShortcutChange,
+    handleMachineSettingsChange,
     handleStartOnLoginChange,
+    handlePanelStayOpenWhenPinnedChange,
+    handlePanelKeepOnTaskbarChange,
   } = useSettingsSystemActions({
     pluginSettings,
     setAutoUpdateInterval,
     setAutoUpdateNextAt,
     setGlobalShortcut,
+    setMachineSettings,
     setStartOnLogin,
+    setPanelStayOpenWhenPinned,
+    setPanelKeepOnTaskbar,
     applyStartOnLogin,
   })
 
-  const {
-    handleReorder,
-    handleToggle,
-  } = useSettingsPluginActions({
+  const { handleReorder, handleToggle } = useSettingsPluginActions({
     pluginSettings,
     setPluginSettings,
     setLoadingForPlugins,
@@ -179,10 +205,7 @@ function App() {
     scheduleTrayIconUpdate,
   })
 
-  const settingsPlugins = useSettingsPluginList({
-    pluginSettings,
-    pluginsMeta,
-  })
+  const settingsPlugins = useSettingsPluginList({ pluginSettings, pluginsMeta })
 
   const { displayPlugins, navPlugins, selectedPlugin } = useAppPluginViews({
     activeView,
@@ -192,50 +215,15 @@ function App() {
     pluginStates,
   })
 
-  const pluginSettingsRef = useRef(pluginSettings)
-  useEffect(() => {
-    pluginSettingsRef.current = pluginSettings
-  }, [pluginSettings])
-
-  const handlePluginContextAction = useCallback(
-    (pluginId: string, action: PluginContextAction) => {
-      if (action === "reload") {
-        handleRetryPlugin(pluginId)
-        return
-      }
-
-      const currentSettings = pluginSettingsRef.current
-      if (!currentSettings) return
-      const alreadyDisabled = currentSettings.disabled.includes(pluginId)
-      if (alreadyDisabled) return
-
-      const nextSettings = {
-        ...currentSettings,
-        disabled: [...currentSettings.disabled, pluginId],
-      }
-      setPluginSettings(nextSettings)
-      scheduleTrayIconUpdate("settings", TRAY_SETTINGS_DEBOUNCE_MS)
-      void savePluginSettings(nextSettings).catch((error) => {
-        console.error("Failed to save plugin toggle:", error)
-      })
-
-      if (activeView === pluginId) {
-        setActiveView("home")
-      }
-    },
-    [activeView, handleRetryPlugin, scheduleTrayIconUpdate, setActiveView, setPluginSettings]
-  )
-
-  const isPluginRefreshAvailable = useCallback(
-    (pluginId: string) => {
-      const pluginState = pluginStates[pluginId]
-      if (!pluginState) return true
-      if (pluginState.loading) return false
-      if (!pluginState.lastManualRefreshAt) return true
-      return Date.now() - pluginState.lastManualRefreshAt >= REFRESH_COOLDOWN_MS
-    },
-    [pluginStates]
-  )
+  const { handlePluginContextAction, isPluginRefreshAvailable } = usePluginContextActions({
+    activeView,
+    pluginSettings,
+    pluginStates,
+    setActiveView,
+    setPluginSettings,
+    handleRetryPlugin,
+    scheduleTrayIconUpdate,
+  })
 
   return (
     <AppShell
@@ -262,7 +250,10 @@ function App() {
         onMenubarMetricChange: handleMenubarMetricChange,
         traySettingsPreview,
         onGlobalShortcutChange: handleGlobalShortcutChange,
+        onMachineSettingsChange: handleMachineSettingsChange,
         onStartOnLoginChange: handleStartOnLoginChange,
+        onPanelStayOpenWhenPinnedChange: handlePanelStayOpenWhenPinnedChange,
+        onPanelKeepOnTaskbarChange: handlePanelKeepOnTaskbarChange,
       }}
     />
   )

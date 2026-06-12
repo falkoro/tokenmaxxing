@@ -7,11 +7,15 @@ const {
   saveAutoUpdateIntervalMock,
   saveGlobalShortcutMock,
   saveStartOnLoginMock,
+  savePanelKeepOnTaskbarMock,
+  savePanelStayOpenWhenPinnedMock,
 } = vi.hoisted(() => ({
   getEnabledPluginIdsMock: vi.fn(),
   saveAutoUpdateIntervalMock: vi.fn(),
   saveGlobalShortcutMock: vi.fn(),
   saveStartOnLoginMock: vi.fn(),
+  savePanelKeepOnTaskbarMock: vi.fn(),
+  savePanelStayOpenWhenPinnedMock: vi.fn(),
   invokeMock: vi.fn(),
 }))
 
@@ -24,6 +28,8 @@ vi.mock("@/lib/settings", () => ({
   saveAutoUpdateInterval: saveAutoUpdateIntervalMock,
   saveGlobalShortcut: saveGlobalShortcutMock,
   saveStartOnLogin: saveStartOnLoginMock,
+  savePanelKeepOnTaskbar: savePanelKeepOnTaskbarMock,
+  savePanelStayOpenWhenPinned: savePanelStayOpenWhenPinnedMock,
 }))
 
 import { useSettingsSystemActions } from "@/hooks/app/use-settings-system-actions"
@@ -34,6 +40,8 @@ describe("useSettingsSystemActions", () => {
     saveAutoUpdateIntervalMock.mockReset()
     saveGlobalShortcutMock.mockReset()
     saveStartOnLoginMock.mockReset()
+    savePanelKeepOnTaskbarMock.mockReset()
+    savePanelStayOpenWhenPinnedMock.mockReset()
     invokeMock.mockReset()
 
     getEnabledPluginIdsMock.mockImplementation((settings: { order: string[]; disabled: string[] }) =>
@@ -42,6 +50,8 @@ describe("useSettingsSystemActions", () => {
     saveAutoUpdateIntervalMock.mockResolvedValue(undefined)
     saveGlobalShortcutMock.mockResolvedValue(undefined)
     saveStartOnLoginMock.mockResolvedValue(undefined)
+    savePanelKeepOnTaskbarMock.mockResolvedValue(undefined)
+    savePanelStayOpenWhenPinnedMock.mockResolvedValue(undefined)
     invokeMock.mockResolvedValue(undefined)
   })
 
@@ -57,6 +67,8 @@ describe("useSettingsSystemActions", () => {
         setAutoUpdateNextAt,
         setGlobalShortcut: vi.fn(),
         setStartOnLogin: vi.fn(),
+        setPanelStayOpenWhenPinned: vi.fn(),
+        setPanelKeepOnTaskbar: vi.fn(),
         applyStartOnLogin: vi.fn().mockResolvedValue(undefined),
       })
     )
@@ -81,6 +93,8 @@ describe("useSettingsSystemActions", () => {
         setAutoUpdateNextAt,
         setGlobalShortcut: vi.fn(),
         setStartOnLogin: vi.fn(),
+        setPanelStayOpenWhenPinned: vi.fn(),
+        setPanelKeepOnTaskbar: vi.fn(),
         applyStartOnLogin: vi.fn().mockResolvedValue(undefined),
       })
     )
@@ -104,6 +118,8 @@ describe("useSettingsSystemActions", () => {
         setAutoUpdateNextAt: vi.fn(),
         setGlobalShortcut,
         setStartOnLogin,
+        setPanelStayOpenWhenPinned: vi.fn(),
+        setPanelKeepOnTaskbar: vi.fn(),
         applyStartOnLogin,
       })
     )
@@ -145,6 +161,8 @@ describe("useSettingsSystemActions", () => {
         setAutoUpdateNextAt: vi.fn(),
         setGlobalShortcut: vi.fn(),
         setStartOnLogin: vi.fn(),
+        setPanelStayOpenWhenPinned: vi.fn(),
+        setPanelKeepOnTaskbar: vi.fn(),
         applyStartOnLogin,
       })
     )

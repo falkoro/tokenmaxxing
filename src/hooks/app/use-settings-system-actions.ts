@@ -4,9 +4,13 @@ import {
   getEnabledPluginIds,
   saveAutoUpdateInterval,
   saveGlobalShortcut,
+  saveMachineSettings,
+  savePanelKeepOnTaskbar,
+  savePanelStayOpenWhenPinned,
   saveStartOnLogin,
   type AutoUpdateIntervalMinutes,
   type GlobalShortcut,
+  type MachineSettings,
   type PluginSettings,
 } from "@/lib/settings"
 
@@ -15,7 +19,10 @@ type UseSettingsSystemActionsArgs = {
   setAutoUpdateInterval: (value: AutoUpdateIntervalMinutes) => void
   setAutoUpdateNextAt: (value: number | null) => void
   setGlobalShortcut: (value: GlobalShortcut) => void
+  setMachineSettings: (value: MachineSettings) => void
   setStartOnLogin: (value: boolean) => void
+  setPanelStayOpenWhenPinned: (value: boolean) => void
+  setPanelKeepOnTaskbar: (value: boolean) => void
   applyStartOnLogin: (value: boolean) => Promise<void>
 }
 
@@ -24,7 +31,10 @@ export function useSettingsSystemActions({
   setAutoUpdateInterval,
   setAutoUpdateNextAt,
   setGlobalShortcut,
+  setMachineSettings,
   setStartOnLogin,
+  setPanelStayOpenWhenPinned,
+  setPanelKeepOnTaskbar,
   applyStartOnLogin,
 }: UseSettingsSystemActionsArgs) {
   const handleAutoUpdateIntervalChange = useCallback((value: AutoUpdateIntervalMinutes) => {
@@ -54,6 +64,13 @@ export function useSettingsSystemActions({
     })
   }, [setGlobalShortcut])
 
+  const handleMachineSettingsChange = useCallback((value: MachineSettings) => {
+    setMachineSettings(value)
+    void saveMachineSettings(value).catch((error) => {
+      console.error("Failed to save machine settings:", error)
+    })
+  }, [setMachineSettings])
+
   const handleStartOnLoginChange = useCallback((value: boolean) => {
     setStartOnLogin(value)
     void saveStartOnLogin(value).catch((error) => {
@@ -64,9 +81,32 @@ export function useSettingsSystemActions({
     })
   }, [applyStartOnLogin, setStartOnLogin])
 
+  const handlePanelStayOpenWhenPinnedChange = useCallback((value: boolean) => {
+    setPanelStayOpenWhenPinned(value)
+    void savePanelStayOpenWhenPinned(value).catch((error) => {
+      console.error("Failed to save panel stay-open setting:", error)
+    })
+    invoke("set_panel_stay_open_when_pinned", { stayOpen: value }).catch((error) => {
+      console.error("Failed to apply panel stay-open setting:", error)
+    })
+  }, [setPanelStayOpenWhenPinned])
+
+  const handlePanelKeepOnTaskbarChange = useCallback((value: boolean) => {
+    setPanelKeepOnTaskbar(value)
+    void savePanelKeepOnTaskbar(value).catch((error) => {
+      console.error("Failed to save panel keep-on-taskbar setting:", error)
+    })
+    invoke("set_panel_keep_on_taskbar", { keep: value }).catch((error) => {
+      console.error("Failed to apply panel keep-on-taskbar setting:", error)
+    })
+  }, [setPanelKeepOnTaskbar])
+
   return {
     handleAutoUpdateIntervalChange,
     handleGlobalShortcutChange,
+    handleMachineSettingsChange,
     handleStartOnLoginChange,
+    handlePanelStayOpenWhenPinnedChange,
+    handlePanelKeepOnTaskbarChange,
   }
 }
